@@ -1,0 +1,59 @@
+{
+    "version": "2.0.0",
+    "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+            "PATH": "D:\\arm-gnu-toolchain-14.2.rel1-mingw-w64-i686-arm-none-eabi\\bin;D:\\GNU MCU Eclipse\\Build Tools\\2.12-20190422-1053\\bin;${env:PATH}"
+        }
+    },
+    "tasks": [
+        {
+            "label": "build (Makefile.core)",
+            "type": "process",
+            "command": "D:\\GNU MCU Eclipse\\Build Tools\\2.12-20190422-1053\\bin\\make.exe",
+            "args": [
+                "-f",
+                "Makefile.core",
+                "-j8"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": {
+                "base": "$gcc",
+                "fileLocation": [
+                    "autoDetect",
+                    "${workspaceFolder}"
+                ]
+            }
+        },
+        {
+            "label": "clean (Makefile.core)",
+            "type": "process",
+            "command": "D:\\GNU MCU Eclipse\\Build Tools\\2.12-20190422-1053\\bin\\make.exe",
+            "args": [
+                "-f",
+                "Makefile.core",
+                "clean"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "flash",
+            "type": "process",
+            "command": "D:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin\\STM32_Programmer_CLI.exe",
+            "args": [
+                "-c",
+                "port=SWD",
+                "mode=UR",
+                "-w",
+                "build_core/ms5351m_core.elf",
+                "-v",
+                "-rst"
+            ],
+            "dependsOn": "build (Makefile.core)",
+            "problemMatcher": []
+        }
+    ]
+}

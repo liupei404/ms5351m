@@ -1,0 +1,50 @@
+# 构建产物（可重新生成，不入库）
+build/
+build_core/
+*.o
+*.d
+*.lst
+*.elf
+*.hex
+*.bin
+*.map
+*.axf
+*.su
+*.gcda
+*.gcno
+
+# 日志
+*.log
+build_log*.txt
+build_core_log.txt
+*_log.txt
+
+# 帧缓存 dump（用 README 里的 -u 命令随时重抓）
+dump/*.bin
+
+# Python / 编辑器缓存
+__pycache__/
+*.pyc
+.vscode/.history/
+.codebuddy/cache/
+
+# LVGL 只提交构建用得到的部分（src/include/libs/configs）。
+# 以下目录留在本地即可，不要在版本库里放大文件：
+lvgl/tests/
+lvgl/demos/
+lvgl/docs/
+lvgl/examples/
+lvgl/scripts/
+lvgl/env_support/
+lvgl/.github/
+lvgl/.devcontainer/
+lvgl/zephyr/
+lvgl/sbom/
+
+# CMSIS DSP 库本工程未使用，只留本地
+Drivers/CMSIS/DSP/
+
+# 工具链/调试残留
+.openocd/
+*.swp
+*~

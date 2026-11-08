@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>函数信号发生器工程说明 · STM32H743 + LVGL 9.6.0 + MS5351M</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A111C'/%3E%3Cpath d='M4 20 L9 20 L9 12 L15 12 L15 20 L21 20 L21 12 L28 12' stroke='%232AC5F0' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0A111C; --panel:#121C2B; --panel2:#17243A; --line:#23324A;
+  --text:#E8EFF8; --muted:#8FA5C0; --cyan:#2AC5F0;
+  --green:#43D6A0; --amber:#F0A73B; --red:#E35B62;
+  --mono:"Cascadia Mono","Consolas","SFMono-Regular",ui-monospace,monospace;
+  --sans:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--sans); font-size:16px; line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:0 20px}
+
+/* ---------- 顶部导航 ---------- */
+.nav{
+  position:sticky; top:0; z-index:20;
+  background:rgba(10,17,28,.92); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+}
+.nav-inner{max-width:1080px; margin:0 auto; padding:10px 20px; display:flex; gap:6px; overflow-x:auto}
+.nav a{
+  flex:0 0 auto; color:var(--muted); text-decoration:none;
+  font-size:13px; padding:6px 10px; border-radius:4px; border:1px solid transparent;
+}
+.nav a:hover{color:var(--cyan); border-color:var(--line); background:var(--panel)}
+
+/* ---------- 首屏 ---------- */
+header.hero{padding:44px 0 8px}
+.meta-line{font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--cyan); margin-bottom:14px}
+h1{
+  font-size:clamp(26px,5.2vw,44px); line-height:1.25; margin:0 0 12px;
+  letter-spacing:-.01em; font-weight:700;
+}
+h1 em{font-style:normal; color:var(--cyan)}
+.lede{color:var(--muted); max-width:62ch; margin:0 0 22px}
+
+.status{display:grid; gap:10px; grid-template-columns:1fr; margin:26px 0 6px}
+@media(min-width:640px){.status{grid-template-columns:repeat(3,1fr)}}
+.led{
+  border:1px solid var(--line); background:var(--panel); border-radius:6px;
+  padding:12px 14px; display:flex; align-items:baseline; gap:10px;
+}
+.led b{font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--muted); font-weight:400}
+.led i{
+  font-style:normal; margin-left:auto; font-size:13px; font-family:var(--mono);
+}
+.dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;align-self:center}
+.dot.ok{background:var(--green); box-shadow:0 0 8px var(--green)}
+.dot.warn{background:var(--amber); box-shadow:0 0 8px var(--amber)}
+
+/* ---------- 截图 ---------- */
+figure.shot{margin:30px 0 0}
+figure.shot img{
+  width:100%; height:auto; display:block; border-radius:8px;
+  border:1px solid var(--line); background:#000;
+}
+figure.shot figcaption{
+  font-size:13px; color:var(--muted); margin-top:10px;
+  padding-left:12px; border-left:2px solid var(--cyan);
+}
+
+/* ---------- 章节 ---------- */
+section{padding:44px 0 8px; border-top:1px solid var(--line); margin-top:36px}
+h2{font-size:clamp(20px,3vw,26px); margin:0 0 6px; letter-spacing:-.01em}
+h2 span{font-family:var(--mono); font-size:12px; color:var(--cyan); display:block; margin-bottom:8px; letter-spacing:.08em; font-weight:400}
+h3{font-size:17px; margin:26px 0 8px; color:var(--text)}
+p{margin:0 0 12px; color:#D3DFEE}
+.small{font-size:13px; color:var(--muted)}
+
+/* ---------- 卡片组 ---------- */
+.cards{display:grid; gap:12px; grid-template-columns:1fr; margin-top:18px}
+@media(min-width:700px){.cards{grid-template-columns:repeat(2,1fr)}}
+.card{border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:14px 16px}
+.card .k{font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--muted)}
+.card .v{font-size:15px; color:var(--text); margin-top:4px}
+.card .v code{font-family:var(--mono); color:var(--cyan); font-size:13px}
+
+/* ---------- 表格 ---------- */
+table{width:100%; border-collapse:collapse; margin:16px 0 8px; table-layout:fixed; font-size:14px}
+thead th{
+  text-align:left; font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+  color:var(--muted); font-weight:400; border-bottom:1px solid var(--line); padding:8px 10px;
+}
+tbody td{border-bottom:1px solid rgba(35,50,74,.6); padding:9px 10px; vertical-align:top; overflow-wrap:anywhere}
+tbody td.mono{font-family:var(--mono); font-size:13px; color:var(--cyan)}
+tbody td.dim{color:var(--muted)}
+
+/* ---------- 代码块 ---------- */
+pre{
+  margin:14px 0; padding:14px 16px; background:#080E17; border:1px solid var(--line);
+  border-radius:6px; overflow-x:auto; font-family:var(--mono); font-size:13px;
+  line-height:1.6; color:#B9D3E8;
+}
+pre .c{color:#5E7590}
+pre .h{color:var(--green)}
+
+/* ---------- 步骤序列（仅用于有先后顺序的取证过程） ---------- */
+.tl{margin-top:22px}
+.step{display:grid; grid-template-columns:56px 1fr; align-items:start}
+.when{
+  font-family:var(--mono); font-size:12px; color:var(--muted);
+  text-align:right; padding:2px 16px 0 0;
+}
+.content{border-left:1px solid var(--line); padding:0 0 24px 22px; position:relative}
+.content:before{
+  content:""; position:absolute; left:-5px; top:6px; width:9px; height:9px;
+  border-radius:50%; background:var(--panel2); border:1px solid var(--cyan);
+  box-shadow:0 0 0 3px var(--bg);
+}
+.step:last-child .content{border-left-color:transparent; padding-bottom:6px}
+.step:last-child .content:before{background:var(--cyan)}
+.what{font-weight:600; margin-bottom:3px}
+.did{font-size:14px; color:#C6D6E8}
+
+/* ---------- 结论条 ---------- */
+.verdict{
+  border-left:3px solid var(--amber); background:var(--panel);
+  padding:14px 16px; border-radius:0 6px 6px 0; margin:18px 0;
+}
+.verdict.ok{border-left-color:var(--green)}
+.verdict.bad{border-left-color:var(--red)}
+.verdict b{display:block; font-size:13px; color:var(--muted); font-family:var(--mono); letter-spacing:.06em; margin-bottom:4px; font-weight:400}
+
+ul{margin:8px 0 14px; padding-left:20px}
+ul li{margin-bottom:6px; color:#D3DFEE}
+.tag{
+  display:inline-block; font-family:var(--mono); font-size:11px; padding:1px 6px;
+  border:1px solid var(--line); border-radius:3px; color:var(--muted); margin-right:4px;
+}
+footer{border-top:1px solid var(--line); margin-top:48px; padding:24px 0 60px; color:var(--muted); font-size:13px}
+</style>
+</head>
+<body>
+
+<nav class="nav"><div class="nav-inner">
+  <a href="#overview">概览</a>
+  <a href="#ui">实机界面</a>
+  <a href="#hw">硬件</a>
+  <a href="#pins">引脚</a>
+  <a href="#soft">软件结构</a>
+  <a href="#build">构建与烧写</a>
+  <a href="#display">屏幕取证</a>
+  <a href="#touch">触摸</a>
+  <a href="#clk">时钟源</a>
+  <a href="#todo">已知问题</a>
+  <a href="#ref">速查</a>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="meta-line">STM32H743IIT6 · LTDC 1024×600 RGB565 · LVGL 9.6.0 · GT911 · MS5351M</div>
+  <h1>函数信号发生器<br>工程说明与调试存档</h1>
+  <p class="lede">正点原子阿波罗 H7 开发板上的函数信号发生器：SDRAM 帧缓存 + LTDC 直驱 1024×600 屏、LVGL 9.6.0 全屏界面、GT911 电容触摸（软件 I2C）、MS5351M 时钟源。这份文档记录工程结构、可复现的构建烧写入口，以及屏幕 / 触摸 / 时钟三条链路的完整取证结论。</p>
+
+  <div class="status">
+    <div class="led"><span class="dot ok"></span><b>DISPLAY</b><i>1024×600 正常</i></div>
+    <div class="led"><span class="dot ok"></span><b>TOUCH</b><i>GT911 @ 0x14</i></div>
+    <div class="led"><span class="dot warn"></span><b>CLK SOURCE</b><i>晶振未起振</i></div>
+  </div>
+</header>
+
+<figure class="shot wrap">
+  <img src="assets/ui-1024x600.png" alt="实机界面截图：函数信号发生器主界面" width="1024" height="600">
+  <figcaption>实机画面，由 LTDC 帧缓存 <code>0xC0000000</code> 经 SWD 在线 dump 后按 RGB565 转成 PNG（1024×600）。这不是设计稿，是屏上真实显示的内容。</figcaption>
+</figure>
+
+<!-- ===== 概览 ===== -->
+<section id="overview" class="wrap">
+  <h2><span>01 / OVERVIEW</span>工程概览</h2>
+  <p>整套系统跑在一棵由 CubeMX 生成的工程树（<code>Core/</code>）上，界面与外设驱动全部放在独立的 <code>app/</code> 目录里，构建入口是与 CubeMX 无关的 <code>Makefile.core</code>。这样 CubeMX 重新生成工程不会覆盖任何手写代码，<code>lvgl/</code> 目录也一个字节都不改。</p>
+
+  <div class="cards">
+    <div class="card"><div class="k">MCU</div><div class="v">STM32H743IIT6（Cortex-M7，480 MHz）</div></div>
+    <div class="card"><div class="k">显示</div><div class="v">LTDC 单图层 · RGB565 · 1024×600 · 帧缓存 <code>0xC0000000</code></div></div>
+    <div class="card"><div class="k">像素时钟</div><div class="v">PLL3 M=1 N=6 P=2 Q=2 R=3 → <code>50 MHz</code></div></div>
+    <div class="card"><div class="k">GUI</div><div class="v">LVGL 9.6.0 · <code>LV_DISPLAY_RENDER_MODE_PARTIAL</code> · 堆 <code>0x30000000</code> / 256 KB</div></div>
+    <div class="card"><div class="k">构建</div><div class="v"><code>make -f Makefile.core -j8</code> → <code>build_core/</code></div></div>
+    <div class="card"><div class="k">固件</div><div class="v">text 418792 · data 208 · bss 180432 字节</div></div>
+    <div class="card"><div class="k">触摸</div><div class="v">GT911 位操作 I2C · PH6/PI3/PH7 · 地址 <code>0x14</code></div></div>
+    <div class="card"><div class="k">时钟源</div><div class="v">MS5351M · I2C1 · 地址 <code>0x60</code> · 参考晶振未起振</div></div>
+  </div>
+</section>
+
+<!-- ===== 界面 ===== -->
+<section id="ui" class="wrap">
+  <h2><span>02 / UI</span>界面构成</h2>
+  <p>全屏英文界面，Montserrat 14 / 20 / 28 三档字号，深色导航蓝底 + 青色强调，1024×600 单屏不滚动。</p>
+
+  <table>
+    <colgroup><col style="width:22%"><col style="width:46%"><col style="width:32%"></colgroup>
+    <thead><tr><th>区域</th><th>内容</th><th>行为</th></tr></thead>
+    <tbody>
+      <tr><td>顶栏</td><td>标题、<code>OUTPUT ON / OFF</code> 状态、大号频率读数</td><td>随开关与频率实时更新</td></tr>
+      <tr><td>左栏</td><td>SINE / SQUARE / TRIANGLE / SAWTOOTH 四个波形按钮</td><td>点击切换选中态</td></tr>
+      <tr><td>中部</td><td>两周期波形预览（LVGL chart）</td><td>跟随波形与幅度重绘</td></tr>
+      <tr><td>下部</td><td>FREQ 对数滑条 + <code>-</code>/<code>+</code> 步进、AMP、OFFSET、OUTPUT 开关</td><td>改频率会立即重写 MS5351M 分频</td></tr>
+    </tbody>
+  </table>
+
+  <div class="verdict">
+    <b>硬件事实，先说清</b>
+    MS5351M / Si5351 是时钟发生器，只能输出方波，内部没有幅度控制，也没有直流偏置。因此界面上的波形选择与 AMP / OFFSET 对 CLK0 没有实际作用；要真的输出正弦、三角、锯齿并调节幅度与偏置，必须另加 DAC（H743 的 DAC1_OUT2 = PA5 目前空闲，PA4 被按键 Switch_3 占用）与后级模拟链路。
+  </div>
+</section>
+
+<!-- ===== 硬件 ===== -->
+<section id="hw" class="wrap">
+  <h2><span>03 / HARDWARE</span>硬件与外设</h2>
+  <table>
+    <colgroup><col style="width:20%"><col style="width:30%"><col style="width:26%"><col style="width:24%"></colgroup>
+    <thead><tr><th>部件</th><th>型号 / 规格</th><th>接口</th><th>状态</th></tr></thead>
+    <tbody>
+      <tr><td>开发板</td><td>正点原子阿波罗 H7</td><td class="dim">—</td><td>正常</td></tr>
+      <tr><td>LCD</td><td>7 寸 RGB 1024×600，RGB565</td><td>LTDC + FMC SDRAM</td><td>正常显示</td></tr>
+      <tr><td>SDRAM</td><td>W9825G6KH 类 32 MB，bank1 映射到 <code>0xC0000000</code></td><td>FMC</td><td>正常，刷新率 1667</td></tr>
+      <tr><td>触摸</td><td>GT911 电容屏控制器</td><td>软件 I2C（GPIO 位操作）</td><td>可用，地址 0x14</td></tr>
+      <tr><td>时钟源</td><td>MS5351M 模块</td><td>硬件 I2C1，地址 0x60</td><td>通信正常；参考晶振未起振</td></tr>
+      <tr><td>调试</td><td>ST-Link V2（SWD）</td><td>STM32CubeProgrammer CLI</td><td>在线读写正常</td></tr>
+    </tbody>
+  </table>
+  <p class="small">SDRAM 上电序列 CubeMX 不生成，由 <code>Core/Src/main.c</code> 的 USER CODE 2 补齐：CLK_EN → 1 ms → PALL → AUTOREFRESH×8 → LOAD_MODE <code>0x0230</code> → <code>HAL_SDRAM_ProgramRefreshRate(&amp;hsdram1, 1667)</code>。读回 <code>SDCR1 = 0x39D9</code>、<code>SDTR1 = 0x01126361</code>，与正常工作的参照工程一致。</p>
+</section>
+
+<!-- ===== 引脚 ===== -->
+<section id="pins" class="wrap">
+  <h2><span>04 / PINOUT</span>引脚分配</h2>
+  <p class="small">下表取自 <code>Core/Inc/main.h</code>，为当前工程实际编译进固件的定义。</p>
+  <table>
+    <colgroup><col style="width:22%"><col style="width:14%"><col style="width:34%"><col style="width:30%"></colgroup>
+    <thead><tr><th>宏</th><th>引脚</th><th>用途</th><th>归属</th></thead>
+    <tbody>
+      <tr><td class="mono">T_SCK_Pin</td><td class="mono">PH6</td><td>GT911 SCL（位操作）</td><td class="dim">app/gt911.c</td></tr>
+      <tr><td class="mono">T_SDA_Pin</td><td class="mono">PI3</td><td>GT911 SDA（位操作）</td><td class="dim">app/gt911.c</td></tr>
+      <tr><td class="mono">T_INT_Pin</td><td class="mono">PH7</td><td>GT911 INT（输入，轮询）</td><td class="dim">app/gt911.c</td></tr>
+      <tr><td class="mono">LCD_BK_Pin</td><td class="mono">PB5</td><td>背光使能</td><td class="dim">main.c USER CODE 2</td></tr>
+      <tr><td class="mono">IIC_SCL_Pin</td><td class="mono">PH4</td><td>CubeMX 原 I2C1 SCL，被释放为 ANALOG</td><td class="dim">app/i2c_bus.c</td></tr>
+      <tr><td class="mono">IIC_SDA_Pin</td><td class="mono">PH5</td><td>CubeMX 原 I2C1 SDA，被释放为 ANALOG</td><td class="dim">app/i2c_bus.c</td></tr>
+      <tr><td class="dim">（运行时决定）</td><td class="mono">PB6 / PB7</td><td>I2C1 SCL / SDA（AF4），MS5351M 实际应答的一组</td><td class="dim">app/i2c_bus.c</td></tr>
+      <tr><td class="mono">Switch_2_Pin</td><td class="mono">PA3</td><td>板载按键</td><td class="dim">CubeMX</td></tr>
+      <tr><td class="mono">Switch_3_Pin</td><td class="mono">PA4</td><td>板载按键（占用 DAC1_OUT1）</td><td class="dim">CubeMX</td></tr>
+      <tr><td class="mono">LED0_Pin / LED1_Pin</td><td class="mono">PB1 / PB0</td><td>板载 LED</td><td class="dim">CubeMX</td></tr>
+    </tbody>
+  </table>
+
+  <h3>I2C1 的引脚自动探测</h3>
+  <p>MS5351M 究竟接在 GPIOB 的哪两根线上，做过实测：<strong>按 SCL=PB8 / SDA=PB7 配置时整条总线无应答</strong>，芯片真正应答的是 <strong>PB6 = SCL、PB7 = SDA</strong>。为避免接线差异导致反复改代码，<code>ms5351_init()</code> 现在会依次尝试三组 I2C1 引脚对（PB8+PB7 → PB6+PB7 → PB8+PB9），用 <code>HAL_I2C_IsDeviceReady()</code> 探测 <code>0x60</code>，命中一组就锁定；结果记在 <code>g_dbg.si_mask</code> 的 bit24~26。</p>
+</section>
+
+<!-- ===== 软件结构 ===== -->
+<section id="soft" class="wrap">
+  <h2><span>05 / STRUCTURE</span>软件结构</h2>
+  <pre><span class="c">E:\ms5351m</span>
+├─ Core/            <span class="c">CubeMX 生成（只改 USER CODE 区）</span>
+│  ├─ Src/ main.c  fmc.c  ltdc.c  i2c.c  gpio.c …
+│  └─ Inc/ main.h  ltdc.h  i2c.h …
+├─ app/            <span class="c">手写代码，CubeMX 重新生成不会碰</span>
+│  ├─ app.c/.h      <span class="c">总入口、g_dbg 调试快照、主循环</span>
+│  ├─ bsp_lcd.c/.h  <span class="c">MPU / PLL3 / LTDC / flush / 整屏填充</span>
+│  ├─ siggen_ui.c   <span class="c">1024×600 全屏 LVGL 界面</span>
+│  ├─ ms5351.c/.h   <span class="c">时钟芯片驱动 + 锁相扫描</span>
+│  ├─ i2c_bus.c/.h  <span class="c">I2C1 引脚重定位与自动探测</span>
+│  └─ gt911.c/.h    <span class="c">触摸驱动 + 后台监管</span>
+├─ lvgl/           <span class="c">LVGL 9.6.0 源码，一个字节都不改</span>
+├─ lv_conf.h       <span class="c">配置（堆地址、双缓冲、渲染模式）</span>
+├─ lvgl_files.mk   <span class="c">474 个 LVGL 源文件清单</span>
+├─ Makefile.core   <span class="c">当前唯一构建入口</span>
+└─ docs/           <span class="c">本说明文档与截图存档</span></pre>
+
+  <h3>启动顺序</h3>
+  <ul>
+    <li><code>main.c</code> USER CODE 2：SDRAM 上电序列 → 背光 PB5 拉高 → 四色带填充验证 → <code>app_init()</code></li>
+    <li><code>app_init()</code>：<code>bsp_lcd_init()</code>（MPU / PLL3 / LTDC / 图层配置 / LVGL display）→ <code>siggen_ui_create()</code> → <code>gt911_init()</code> → <code>ms5351_init()</code></li>
+    <li><code>main.c</code> 主循环 USER CODE 3：<code>app_process()</code> → <code>lv_timer_handler()</code> + <code>gt911_service()</code> + 欠载计数</li>
+    <li><code>ms5351.c</code> 的 <code>#include "i2c_bus.h"</code>：不改 CubeMX 的 <code>hi2c1</code>，只重写引脚并 <code>HAL_I2C_DeInit/Init</code></li>
+  </ul>
+
+  <h3>LVGL 关键配置</h3>
+  <table>
+    <colgroup><col style="width:34%"><col style="width:66%"></colgroup>
+    <thead><tr><th>项</th><th>值 / 说明</th></thead>
+    <tbody>
+      <tr><td class="mono">LV_MEM_ADR</td><td><code>0x30000000</code>（内部 D2 SRAM，256 KB）</td></tr>
+      <tr><td class="mono">LV_MEM_SIZE</td><td>256 KB。曾把堆放到 SDRAM，运行必然被 TLSF 判为越界并崩溃</td></tr>
+      <tr><td class="mono">渲染模式</td><td><code>LV_DISPLAY_RENDER_MODE_PARTIAL</code>，双 draw buffer <code>1024×40</code>，位于 <code>.ltdc_draw_buf</code>（NOLOAD，AXI SRAM）</td></tr>
+      <tr><td class="mono">编译定义</td><td><code>-Ilvgl -I. -DLV_CONF_INCLUDE_SIMPLE</code>，<code>lv_conf.h</code> 放工程根目录</td></tr>
+      <tr><td class="mono">flush</td><td>逐行 <code>memcpy</code> 到帧缓存后按 32 字节扩边 <code>SCB_CleanDCache_by_Addr</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===== 构建与烧写 ===== -->
+<section id="build" class="wrap">
+  <h2><span>06 / BUILD</span>构建、烧写与在线取证</h2>
+  <p>根目录那个 CubeMX 生成的 <code>Makefile</code> <strong>不要用</strong>：它同时列了 <code>Src/</code> 与 <code>Core/Src/</code> 两套源文件，两边 <code>syscalls.c</code> 都定义 <code>__env</code>，必然报多重定义；有时还会因为 <code>build/</code> 里的产物比源码新而输出 <code>Nothing to be done for 'all'</code>。统一走 <code>Makefile.core</code>。</p>
+
+  <pre><span class="c"># 编译（工具链必须在 PATH 里，切勿额外设置 GCC_PATH）</span>
+$env:Path="D:\arm-gnu-toolchain-14.2.rel1-mingw-w64-i686-arm-none-eabi\bin;D:\GNU MCU Eclipse\Build Tools\2.12-20190422-1053\bin;" + $env:Path
+make -f Makefile.core -j8
+
+<span class="c"># 烧写（UR 模式会复位）</span>
+STM32_Programmer_CLI -c port=SWD mode=UR -w build_core\ms5351m_core.elf -v -rst
+
+<span class="c"># 读在线 RAM / 寄存器必须用 hotplug，UR 会把数据清掉</span>
+STM32_Programmer_CLI -c port=SWD mode=hotplug -r32 0x200007E8 80
+
+<span class="c"># g_dbg 地址随代码变化漂移，每次用 nm 现查</span>
+arm-none-eabi-nm build_core\ms5351m_core.elf | findstr " g_dbg"
+
+<span class="c"># 帧缓存抓图：把屏上真实画面导出成 bin，再转 PNG</span>
+STM32_Programmer_CLI -c port=SWD mode=hotplug -u 0xC0000000 1228800 dump\fb_now.bin
+python dump\fb2png.py</pre>
+
+  <p class="small">VSCode 里 <code>Ctrl+Shift+B</code> 也可用：<code>.vscode/tasks.json</code> 已配好 build / clean / flash 三个任务，默认任务指向 <code>Makefile.core</code>。探针互斥要记住：调 OpenOCD 前先结束 <code>STM32_Programmer_CLI</code>，反之亦然。</p>
+
+  <h3>g_dbg 调试快照</h3>
+  <p>所有状态通过 SWD 读一个结构体就能看到，不需要串口。最近一次实测地址 <code>0x200007E8</code>，magic <code>0x53504731</code>（"SPG1"）。</p>
+  <table>
+    <colgroup><col style="width:26%"><col style="width:74%"></colgroup>
+    <thead><tr><th>字段</th><th>含义</th></thead>
+    <tbody>
+      <tr><td class="mono">magic / lvgl_ok / flush_cnt / ui_ok</td><td>LVGL 初始化、flush 次数、界面是否建好</td></tr>
+      <tr><td class="mono">touch_addr</td><td>GT911 命中的 7 位地址，<code>0x14</code> 即就绪</td></tr>
+      <tr><td class="mono">touch_x / touch_y</td><td>最近一次触摸坐标</td></tr>
+      <tr><td class="mono">si_ok / si_lock / si_status / freq_hz</td><td>MS5351M 在线、锁相、原始状态字节、目标频率</td></tr>
+      <tr><td class="mono">gt_id</td><td>从 <code>0x8140</code> 读回的产品 ID，实测 <code>0x39313100</code>（"911"）</td></tr>
+      <tr><td class="mono">gt_ack</td><td>位图：bit20/21 SDA 驱动自检、bit22/23 SCL 驱动自检、bit16~19 释放电平</td></tr>
+      <tr><td class="mono">si_mask</td><td>位图：bit0~3 四种晶振负载电容、bit4~17 晶振×VCO 组合的锁相结果、bit24~26 命中的 I2C 引脚对</td></tr>
+      <tr><td class="mono">gt_scan / gt_int_low / gt_pins</td><td>后台重试探次数、INT 低电平采样数、三根线电平</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===== 屏幕取证 ===== -->
+<section id="display" class="wrap">
+  <h2><span>07 / DISPLAY</span>屏上雪花：取证过程</h2>
+  <p>这一节是整份文档里最值得留存的部分：帧缓存 dump 每次都是对的，屏上却是雪花，最后在面板端才找到原因。过程按顺序记录下来，避免后人重走。</p>
+
+  <div class="tl">
+    <div class="step">
+      <div class="when">步骤 1</div>
+      <div class="content">
+        <div class="what">先把帧缓存本身的可见性做对</div>
+        <div class="did">MPU Region0（<code>0xC0000000</code> / 32 MB）由 TEX_LEVEL1 + 非 cache 改为 <code>MPU_TEX_LEVEL0 + CACHEABLE + BUFFERABLE</code>；flush 逐行 memcpy 后按 32 字节扩边 <code>SCB_CleanDCache_by_Addr</code>。</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="when">步骤 2</div>
+      <div class="content">
+        <div class="what">加 LTDC 欠载计数</div>
+        <div class="did"><code>LTDC-&gt;ISR &amp; LTDC_ISR_FUIF</code> 计数写进 <code>g_dbg</code>，用来判断是不是 SDRAM 带宽不够。结果恒为 0，排除带宽问题。</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="when">步骤 3</div>
+      <div class="content">
+        <div class="what">分层隔离：纯色 / 关层 / DMA2D</div>
+        <div class="did">模式 1 CPU 纯色循环仍是雪花；模式 2 关层只出背景色，变成纯黑；模式 3 照搬参照工程的 DMA2D 填纯绿还是雪花。逐步排除「绘图代码写坏」。</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="when">步骤 4</div>
+      <div class="content">
+        <div class="what">用能正常显示的固件当金标准，逐寄存器比对</div>
+        <div class="did">烧参照工程 <code>Panda.hex</code> → 屏正常，证明硬件全好。逐项比对固件：LTDC 全局区、图层 0 全部寄存器、FMC SDRAM（<code>SDCR1=0x39D9</code> 等）、全部 LTDC 引脚 AF14 —— 全部一致。只有像素时钟不同：我方 PLL3R 被 <code>HAL_LTDC_MspInit</code> 覆盖回 5（25 MHz），已用 <code>0x58024440</code> 读回确认真实值 <code>0x02010205</code>（50 MHz）。</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="when">步骤 5</div>
+      <div class="content">
+        <div class="what">真正的根因：第二图层</div>
+        <div class="did">读 <code>0x50001104</code>（图层 2 的 CR）发现硬件里 <code>CR=0x00000001</code> 处于使能、<code>CFBAR=0xC0200000</code> 指向一块从未绘制过的空白 SDRAM，以上电随机内容、alpha=255 全屏叠在图层 1 之上 → 满屏雪花。<code>__HAL_LTDC_LAYER_DISABLE()</code> 只改 RAM 结构体不写寄存器，所以从来没生效。改为直接写 <code>LTDC_Layer2-&gt;CR = 0</code>，再 <code>SRCR = LTDC_SRCR_IMR</code> 立即重载，读回 0。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict ok">
+    <b>收口</b>
+    最后用可信的 <code>.ioc</code> 重新生成工程（只有一个 LTDC 图层、<code>PLL3R=3</code>），新树配 <code>Makefile.core</code> 先烧色带测试，再做全屏界面 —— 实机确认正常显示。结论：<code>.ioc</code> 本身没问题，老工程的两处差异（多一个使能的第二图层 + <code>PLL3R=5</code>）才是病因。
+  </div>
+</section>
+
+<!-- ===== 触摸 ===== -->
+<section id="touch" class="wrap">
+  <h2><span>08 / TOUCH</span>GT911 触摸</h2>
+  <p>18 个字段里的 <code>gt_ack</code> 与 <code>gt_pins</code> 就是为这条链路准备的诊断位。最终实测：芯片在 7 位地址 <strong>0x14</strong> 应答，产品 ID 读回 <code>"911"</code>，用户实机确认触摸可用。</p>
+
+  <div class="verdict ok">
+    <b>之前「全地址零 ACK」的真正原因</b>
+    GT911 上电后要等远超 100 ms 才第一次应答。早期在 <code>app_init()</code> 里一次性探测（复位后仅等 60 ms），结果是 0x08~0x77 全地址 NACK，看起来像接线错或芯片坏。现在改成三段式：<code>gt911_init()</code> 里 40 × 50 ms 轮询等待 → 仍未通再走 4 组复位/INT 组合兜底 → <code>gt911_service()</code> 在后台每 200 ms 重试探一次并一直采样 INT。
+  </div>
+
+  <h3>实现要点</h3>
+  <ul>
+    <li>位操作 I2C，半周期 <code>GT911_DELAY_US = 20 µs</code>（约 25 kHz），适配 7 寸 FPC 只靠内部上拉的情况</li>
+    <li>引脚宏兼容两棵工程树：有 <code>T_SCK</code> 就用 <code>T_SCK / T_SDA / T_INT</code>，否则退回旧树的 <code>SCL / SDA / INT / RST</code>；新树没有 RST 脚，<code>GT911_HAS_RST = 0</code></li>
+    <li>寄存器：产品 ID <code>0x8140</code>，状态 <code>0x814E</code>（bit7 有效、低 4 位点数、坐标在 <code>buf[2..5]</code> 小端、读完写 0 清标志）</li>
+    <li>驱动自检：SDA 拉低能读回 0、放开能读回 1（<code>gt_ack</code> bit20/21），SCL 同理（bit22/23）——先证明引脚是自己的，再去怪芯片</li>
+  </ul>
+</section>
+
+<!-- ===== 时钟源 ===== -->
+<section id="clk" class="wrap">
+  <h2><span>09 / CLOCK</span>MS5351M 时钟源</h2>
+  <p>I2C 通信、寄存器写入都不是问题，问题在参考时钟。下面是实测到的寄存器回读值，全部读自片内，不是写入宏。</p>
+
+  <h3>正常模式下的回读（设定 1 MHz 输出）</h3>
+  <table>
+    <colgroup><col style="width:16%"><col style="width:20%"><col style="width:64%"></colgroup>
+    <thead><tr><th>寄存器</th><th>回读值</th><th>含义</th></thead>
+    <tbody>
+      <tr><td class="mono">26~33</td><td class="mono">00 01 00 10 00 00 00 00</td><td>PLLA：P3=1、P1=0x1000=4096 → 25 MHz × 36 = 900 MHz VCO，整数模式</td></tr>
+      <tr><td class="mono">16</td><td class="mono">0x4F</td><td>CLK0：MS 源、8 mA、整数模式</td></tr>
+      <tr><td class="mono">187</td><td class="mono">0x10</td><td>Multisynth fanout 使能</td></tr>
+      <tr><td class="mono">3</td><td class="mono">0xFE</td><td>CLK0 输出使能</td></tr>
+      <tr><td class="mono">183</td><td class="mono">0x40</td><td>晶振负载 8 pF</td></tr>
+      <tr><td class="mono">15</td><td class="mono">0x00</td><td>PLL 参考源 = XTAL</td></tr>
+      <tr><td class="mono">0</td><td class="mono">0x61 / 0x69 / 0xE1</td><td>Device Status：LOL_A（bit5）恒为 1</td></tr>
+    </tbody>
+  </table>
+
+  <h3>晶振直通判定</h3>
+  <p>为把「软件配置错」和「参考时钟缺失」分开，专门编了一版诊断固件（<code>-DMS5351_XTAL_TEST=1</code>）：绕过 PLL 与 MultiSynth，让 CLK0 直接由晶振经 fanout 输出，写 <code>reg187 = 0x50</code>、<code>reg16 = 0x03</code>、<code>reg3 = 0xFE</code>。烧写后读回 <code>183 / 187 / 16 / 3 / 0 / 15 = 0x40 / 0x50 / 0x03 / 0xFE / 0xE1 / 0x00</code> —— 配置确实落片。</p>
+
+  <div class="verdict bad">
+    <b>结论：参考时钟缺失，属硬件</b>
+    CLK0 直通晶振这一档示波器上没有任何波形，同时 <code>reg0</code> 的 bit7（SYS_INIT）卡在 1 —— 芯片自己在等参考时钟。此前的 2 种晶振 × 7 个 VCO（600~900 MHz）× 4 种晶振负载电容全部组合都用 <code>LOL_A</code> 判过，一个都没锁。示波器上曾读到的 31.7 / 33.9k / 44k 乱跳数字，是 PLL 无参考、未锁时的杂波，不能用来反推分频比。
+  </div>
+
+  <h3>这块片子还在另一个坑上：状态位不可信</h3>
+  <p><code>reg0</code> 的 bit3 会跟着 <code>reg183</code> 的 bit7 一起翻（CL 码 0x40/0x00 时 bit3=0，0x80/0xC0 时 bit3=1），bit4（LOS）恒 0，bit5/bit6（LOL）恒 1。整字节像是克隆片内部合成出来的，所以不能拿它当判据。界面上的 <code>PLL LOCKED / UNLOCKED</code> 文案已改成 <code>OUTPUT ON / OFF</code>，真实状态只留在 <code>g_dbg.si_status / si_lock</code> 里。</p>
+
+  <h3>修复路径（按成本排序）</h3>
+  <table>
+    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
+    <thead><tr><th>#</th><th>做法</th></thead>
+    <tbody>
+      <tr><td class="mono">1</td><td>10× 探头量模块 <strong>XA</strong> 脚：有 25 MHz 正弦摆幅 → fanout 配置问题；死平 → 晶振或芯片 XO 问题。这一步能把「晶振坏」和「芯片坏」分开。</td></tr>
+      <tr><td class="mono">2</td><td>换一颗带 25 MHz 晶振的 <strong>SI5351A 正品模块</strong>。现有驱动已做 I2C 引脚自动探测，换模块不必改代码。</td></tr>
+      <tr><td class="mono">3</td><td>救现有模块：用 STM32 的 MCO 或 TIM 出 25 MHz，经约 10 nF 耦合到 CLKIN / XA，并把 <code>reg15</code> 改成 CLKIN 源（写 <code>0x0C</code>）。需要飞线，属硬件改动。</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===== 已知问题 ===== -->
+<section id="todo" class="wrap">
+  <h2><span>10 / OPEN ITEMS</span>已知问题与后续规划</h2>
+
+  <h3>待修</h3>
+  <ul>
+    <li><strong>MS5351M 参考晶振不起振</strong>（硬件侧修复中）。修好后无需改代码：驱动会重新扫 <code>LOL_A</code>，命中即停，并把 <code>g_dbg.si_mask</code> 对应位置 1。</li>
+    <li>晶振修好后要确认真实频率是 25 还是 27 MHz —— 驱动目前按 25 MHz 优先、27 MHz 兜底；若实测是 24.576 MHz 一类非标值，需要把 <code>kXtal[]</code> 改成实测值。</li>
+  </ul>
+
+  <h3>功能缺口（硬件限制，不是 bug）</h3>
+  <ul>
+    <li>正弦 / 三角 / 锯齿、幅度、偏置：MS5351M 做不到，需要 DAC。建议路径：H743 内置 DAC（<code>DAC1_OUT2 = PA5</code>，PA4 已被按键占用）+ DMA 查表 + 后级运放，覆盖约 0~100 kHz；高频方波继续由 5351 负责。</li>
+    <li>界面右下 OUTPUT 开关与 OFFSET 数值文字存在轻微重叠，属于布局细节，可在 <code>siggen_ui.c</code> 里调整坐标。</li>
+  </ul>
+
+  <h3>CubeMX 重新生成前要复查的地方</h3>
+  <ul>
+    <li><code>STM32H743xx_FLASH.ld</code> 里的 <code>.ltdc_draw_buf (NOLOAD)</code> 段不在 USER CODE 区，重新生成会丢，丢了会链接溢出。</li>
+    <li>重新生成后立刻读一次 <code>0x50001104</code>（图层 2 的 CR），如果又变成 1，雪花会立刻回来。</li>
+    <li><code>main.c</code> 的 SDRAM 上电序列与背光、<code>app_init()</code> / <code>app_process()</code> 都在 USER CODE 区内，安全。</li>
+    <li>手写代码一律不进 <code>lvgl/</code>、不写在 USER CODE 区外。</li>
+  </ul>
+</section>
+
+<!-- ===== 速查 ===== -->
+<section id="ref" class="wrap">
+  <h2><span>11 / CHEATSHEET</span>地址与寄存器速查</h2>
+  <table>
+    <colgroup><col style="width:34%"><col style="width:22%"><col style="width:44%"></colgroup>
+    <thead><tr><th>对象</th><th>地址 / 值</th><th>备注</th></thead>
+    <tbody>
+      <tr><td>LTDC 图层 1 基址</td><td class="mono">0x50001084</td><td>CR / WHPCR / WVPCR / PFCR / BFCR / CFBAR / CFBLR / CFBLNR</td></tr>
+      <tr><td>LTDC 图层 2 基址</td><td class="mono">0x50001104</td><td>雪花的元凶就在这，CR bit0 必须为 0</td></tr>
+      <tr><td>PLL3 分频寄存器</td><td class="mono">0x58024440</td><td>偏移 0x40，实测 <code>0x02010205</code> → 50 MHz 像素时钟</td></tr>
+      <tr><td>帧缓存</td><td class="mono">0xC0000000</td><td>1024×600 RGB565 = 1,228,800 字节</td></tr>
+      <tr><td>FMC SDRAM 控制</td><td class="mono">0x52004140 / 0x52004148</td><td>SDCR1 读 <code>0x39D9</code>，SDTR1 读 <code>0x01126361</code>；<code>0x52004144</code> 是 bank2 SNCTL，不要写</td></tr>
+      <tr><td>LVGL 堆</td><td class="mono">0x30000000</td><td>256 KB，内部 D2 SRAM</td></tr>
+      <tr><td>GT911 寄存器</td><td class="mono">0x8140 / 0x814E</td><td>产品 ID / 触摸状态（读完写 0 清标志）</td></tr>
+    </tbody>
+  </table>
+  <p class="small">文档随工程一起存档：<code>docs/工程说明.html</code>、<code>docs/assets/ui-1024x600.png</code>；更细的现场记录在同目录外的 <code>显示调试结论.md</code>，构建日志在 <code>build_core_log.txt</code>，帧缓存原件在 <code>dump/</code>。</p>
+</section>
+
+<footer class="wrap">
+  <p>工程 <code>E:\ms5351m</code> · 构建入口 <code>make -f Makefile.core</code> · 固件 <code>build_core/ms5351m_core.elf</code><br>
+  存档时间 2026-11-08 · 状态：显示正常、触摸可用、时钟源待硬件修复</p>
+</footer>
+
+</body>
+</html>
